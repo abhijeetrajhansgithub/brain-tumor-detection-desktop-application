@@ -1,0 +1,51 @@
+# PyQt5 GUI Update Documentation
+
+## 1. Overview
+This document outlines the recent enhancements and modifications made to the PyQt5 GUI application. The primary updates include image upload and classification functionality, improved theming, and enhanced sidebar interactivity.
+
+## 2. New Features
+### 2.1 Image Upload and Classification
+- **Functionality Added:**
+  - Users can now upload images using a file dialog.
+  - The uploaded image is displayed within the application.
+  - Classification of the uploaded image is performed using external model APIs.
+
+- **New Methods Implemented:**
+  - `upload_image()`: Opens a file dialog to select an image and updates the UI accordingly.
+  - `classify_image()`: Sends the selected image to an API for classification and displays the result.
+
+- **Additional Changes:**
+  - Introduced `self.FINAL_FILE_PATH` to store the selected image path.
+  - Added `self.image_view` for image preview.
+  - Added `self.classify_button`, which remains hidden until an image is uploaded.
+  - Integrated `return_image_path()` from `Image.load_image` to fetch the image path.
+  - Integrated `CLASSIFY_IMAGE_wBOTH_MODELS__for_btcm_mdl_v01s` from `API.ModelAPI.clf_model_connection_api` to classify images.
+  - Mapped classification results to readable tumor labels.
+
+## 3. UI Enhancements
+### 3.1 Theming and Styling
+- **Enhancements in `toggle_theme_main_wn()`:**
+  - Dynamically updates the theme based on the sidebar width.
+  - Ensures better UI consistency across different theme modes.
+
+- **Improvements in `implement_themes()`:**
+  - Applies styling dynamically to buttons based on their type.
+  - Supports both dark mode and light mode adjustments.
+
+- **New Function `set_dark_mode()`:**
+  - Enforces a consistent dark mode across all UI elements.
+
+### 3.2 Sidebar Interactivity
+- **Enhancements in `toggle_sidebar()`:**
+  - Now supports dynamically updating button text/icons when toggled.
+  - Expanded sidebar provides readable text labels for navigation buttons.
+  - Ensures smooth transition between expanded and collapsed states.
+
+## 4. Summary
+These updates significantly improve the functionality and user experience of the PyQt5 GUI application by:
+- Adding image upload and classification capabilities.
+- Enhancing the UI with improved theming and styling.
+- Refining sidebar interactivity for a better user experience.
+
+For further details or troubleshooting, please refer to the respective function implementations in the codebase.
+

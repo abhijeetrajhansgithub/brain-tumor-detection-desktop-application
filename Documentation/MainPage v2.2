@@ -1,0 +1,126 @@
+# MainPage v2.2 - Code Documentation
+
+## Overview
+The `MainPage_02` class is a PyQt5-based GUI application that provides a main page with a sidebar, theme toggling, image upload, and classification functionalities. It allows users to navigate between different sections using a sidebar and provides an interactive interface for image classification.
+
+---
+## Class: `MainPage_02`
+
+### Constructor: `__init__(self, username)`
+**Parameters:**
+- `username (str)`: The username of the logged-in user.
+
+**Functionality:**
+- Initializes the main application window.
+- Sets up the sidebar with navigation buttons.
+- Implements a dark mode as the default theme.
+- Connects buttons to their respective functions.
+
+---
+## Methods
+
+### `set_theme(self)`
+**Functionality:**
+- Applies the appropriate theme (dark or light) based on the `dark_mode` flag.
+- Uses PyQt5's `QApplication.instance().setPalette()` to update the UI.
+
+---
+
+### `toggle_theme_main_wn(self)`
+**Functionality:**
+- Toggles between light and dark themes.
+- Updates button text and styles accordingly.
+- Calls `implement_themes()` to refresh button styles.
+
+---
+
+### `implement_themes(self)`
+**Functionality:**
+- Applies appropriate styles to all buttons based on the current theme.
+
+---
+
+### `toggle_sidebar(self)`
+**Functionality:**
+- Expands or collapses the sidebar.
+- Updates button text and styles based on sidebar state.
+
+---
+
+### `show_home_frame(self)`
+**Functionality:**
+- Clears the content area and displays a welcome message.
+- Displays the username of the logged-in user.
+
+---
+
+### `show_upload_frame(self)`
+**Functionality:**
+- Clears the content area.
+- Displays an image upload section.
+- Adds an upload button and a classification button (initially hidden).
+- Displays the classification result once available.
+
+---
+
+### `upload_image(self)`
+**Functionality:**
+- Opens a file dialog for the user to select an image.
+- Displays the selected image in the UI.
+- Stores the image file path.
+- Makes the classification button visible.
+
+---
+
+### `classify_image(self)`
+**Functionality:**
+- Loads an image path using an external function `return_image_path()`.
+- Uses `CLASSIFY_IMAGE_wBOTH_MODELS__for_btcm_mdl_v01s()` to classify the image.
+- Maps classification results to human-readable labels.
+- Displays the classification result on the UI.
+
+---
+
+### `clear_content_area(self)`
+**Functionality:**
+- Clears all widgets from the content area.
+
+---
+
+### `set_dark_mode(self)`
+**Functionality:**
+- Applies a dark theme to the application by modifying the color palette.
+
+---
+
+### `get_input_style(self)`
+(Not provided in the snippet, but likely returns a stylesheet for input fields.)
+
+---
+
+## UI Components
+### Sidebar Buttons:
+- **Home (`🏠`)**: Navigates to the home screen.
+- **Upload (`📤`)**: Opens the upload screen.
+- **Theme Toggle (`🌞`/`🌚`)**: Switches between dark and light themes.
+- **Expand/Collapse (`➡️`/`⬅️`)**: Expands or collapses the sidebar.
+
+### Content Area:
+- Displays either the home screen or the upload section.
+- Shows an image preview when a file is uploaded.
+- Displays classification results.
+
+---
+## Dependencies
+- PyQt5: `QMainWindow`, `QWidget`, `QVBoxLayout`, `QHBoxLayout`, `QPushButton`, `QLabel`, `QFrame`, `QApplication`, `QFileDialog`
+- PyQt5.QtCore: `Qt`
+- PyQt5.QtGui: `QPalette`, `QColor`, `QPixmap`
+- External Modules:
+  - `Image.load_image.return_image_path`
+  - `API.ModelAPI.clf_model_connection_api.CLASSIFY_IMAGE_wBOTH_MODELS__for_btcm_mdl_v01s`
+  - `API.ModelAPI.clf_model_connection_api.access_BOTH_models__for_btcm_mdl_v01s`
+
+---
+## Summary
+This class provides an interactive PyQt5-based GUI for image classification. It includes sidebar navigation, theme toggling, and an image upload and classification workflow. The integration with external APIs allows model-based classification of images.
+
