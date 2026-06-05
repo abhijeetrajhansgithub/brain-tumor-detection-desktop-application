@@ -1,0 +1,698 @@
+from PyQt5 import sip
+from PyQt5.QtGui import QPalette, QColor, QImage
+from PyQt5.QtWidgets import (
+    QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QFrame, QApplication, QFileDialog,
+    QRadioButton, QLineEdit, QMessageBox, QDialog
+)
+from PyQt5.QtCore import Qt, qInfo
+from PyQt5.QtGui import QPixmap
+
+import numpy as np
+import cv2
+from fpdf import FPDF
+import os
+import tempfile
+
+
+class MainPage_05(QMainWindow):
+    def __init__(self, username):
+        super().__init__()
+
+        self.classify_button = None
+        self.add_patient_button = None
+        self.search_button = None
+        self.add_patient_dialog = None
+        self.add_patient_window = None
+        self.DOCTOR_USERNAME = username
+
+        self.search_by_phone = None
+        self.search_by_id = None
+        self.search_by_email = None
+        self.search_input = None
+        self.upload_image_button = None
+        self.FINAL_FILE_PATH = None
+        self.IMAGE_PATH = None
+        self.setWindowTitle("Main Page v3.1.1")
+        self.setGeometry(100, 100, 800, 600)
+        self.dark_mode = True  # Default to dark mode
+        self.set_dark_mode()  # Apply dark mode
+
+        self.username = username
+
+        # Main layout
+        self.central_widget = QWidget()
+        self.main_layout = QHBoxLayout(self.central_widget)
+
+        # Sidebar
+        self.sidebar = QFrame()
+        self.sidebar.setFixedWidth(60)  # Initially collapsed
+        self.sidebar_layout = QVBoxLayout(self.sidebar)
+
+        # Home button
+        self.home_button = QPushButton("🏠")
+        self.home_button.setStyleSheet("""
+            text-align: left;
+            min-width: 60px;
+            max-width: 300px;
+            border: none;
+            padding: 5px;
+        """)
+        self.home_button.clicked.connect(self.show_home_frame)  # Connect to frame function
+        self.sidebar_layout.addWidget(self.home_button)
+
+        # Upload button
+        self.upload_button = QPushButton("📤")
+        self.upload_button.setStyleSheet("""
+            text-align: left;
+            min-width: 60px;
+            max-width: 300px;
+            border: none;
+            padding: 5px;
+        """)
+        self.upload_button.clicked.connect(self.show_upload_frame)  # Connect to frame function
+        self.sidebar_layout.addWidget(self.upload_button)
+        
+        # diagnose button
+        self.diagnose_button = QPushButton("🩺")
+        self.diagnose_button.setStyleSheet("""
+            text-align: left;
+            min-width: 60px;
+            max-width: 300px;
+            border: none;
+            padding: 5px;
+        """)
+        # self.diagnose_button.clicked.connect(self.show_diagnose_frame)  # Connect to frame function
+        self.sidebar_layout.addWidget(self.diagnose_button)
+
+        # Theme button
+        # Theme changer button
+        self.theme_changer_main_wn = QPushButton("Change to Light Theme" if self.dark_mode else "Change to Dark Theme")
+        self.theme_changer_main_wn.clicked.connect(self.toggle_theme_main_wn)
+        self.theme_changer_main_wn.setStyleSheet(self.get_theme_button_style())
+        self.sidebar_layout.addWidget(self.theme_changer_main_wn)
+
+        # Expand/Collapse button
+        self.expand_button = QPushButton("➡️")
+        self.expand_button.setStyleSheet(self.get_expand_button_style())
+
+        # Position expand button at the bottom of the sidebar
+        self.sidebar_layout.addStretch()
+        self.sidebar_layout.addWidget(self.expand_button, 0, Qt.AlignBottom)
+
+        self.expand_button.clicked.connect(self.toggle_sidebar)
+
+        # Content area
+        self.content_area = QFrame()
+        self.content_area.setStyleSheet("background-color: gray;")
+        self.content_layout = QVBoxLayout(self.content_area)
+
+        # Initialize with the home frame
+        self.show_home_frame()
+
+        # Add sidebar and content area to the main layout
+        self.main_layout.addWidget(self.sidebar)
+        self.main_layout.addWidget(self.content_area)
+
+        self.implement_themes()
+
+        # Set central widget
+        self.setCentralWidget(self.central_widget)
+        self.toggle_theme_main_wn()
+
+    def set_theme(self):
+        if self.dark_mode:
+            self.set_dark_mode()
+        else:
+            QApplication.instance().setPalette(QApplication.instance().style().standardPalette())
+
+    def toggle_theme_main_wn(self):
+        self.dark_mode = not self.dark_mode
+        self.set_theme()
+        if self.sidebar.width() == 60:
+            self.theme_changer_main_wn.setText("🌞" if self.dark_mode else "🌚")
+        else:
+            self.theme_changer_main_wn.setText(
+                "🐙 Change to Light Theme" if self.dark_mode else "🐙 Change to Dark Theme")
+        self.implement_themes()
+
+    def implement_themes(self):
+        if type(self.home_button) == QPushButton:
+            self.home_button.setStyleSheet(self.get_button_style())
+        if type(self.upload_button) == QPushButton:
+            self.upload_button.setStyleSheet(self.get_button_style())
+        if type(self.diagnose_button) == QPushButton:
+            self.diagnose_button.setStyleSheet(self.get_button_style())
+        if type(self.theme_changer_main_wn) == QPushButton:
+            self.theme_changer_main_wn.setStyleSheet(self.get_theme_button_style())
+        if type(self.expand_button) == QPushButton:
+            self.expand_button.setStyleSheet(self.get_expand_button_style())
+
+        if hasattr(self, "add_patient_button") and self.add_patient_button is not None:
+            if isinstance(self.add_patient_button, QPushButton) and not sip.isdeleted(self.add_patient_button):
+                self.add_patient_button.setStyleSheet(self.get_button_style())
+
+        if hasattr(self, "search_button") and self.search_button is not None:
+            if isinstance(self.search_button, QPushButton) and not sip.isdeleted(self.search_button):
+                self.search_button.setStyleSheet(self.get_button_style())
+
+        if hasattr(self, "classify_button") and self.classify_button is not None:
+            if isinstance(self.classify_button, QPushButton) and not sip.isdeleted(self.classify_button):
+                self.classify_button.setStyleSheet(self.get_button_style())
+
+        if hasattr(self, "upload_image_button") and self.upload_image_button is not None:
+            if isinstance(self.upload_image_button, QPushButton) and not sip.isdeleted(self.upload_image_button):
+                self.upload_image_button.setStyleSheet(self.get_button_style())
+
+    def toggle_sidebar(self):
+        """Toggle the sidebar's width between collapsed and expanded."""
+        if self.sidebar.width() == 60:
+            self.sidebar.setFixedWidth(int(self.width() / 4))  # Expand
+            if type(self.expand_button) == QPushButton:
+                self.expand_button.setStyleSheet(self.get_expand_button_style())
+                self.expand_button.setText("⬅️")
+
+            if type(self.home_button) == QPushButton:
+                self.home_button.setStyleSheet(self.get_button_style())
+                self.home_button.setText("🏠 Home")
+
+            if type(self.upload_button) == QPushButton:
+                self.upload_button.setStyleSheet(self.get_button_style())
+                self.upload_button.setText("📤 Upload")
+
+            if type(self.diagnose_button) == QPushButton:
+                self.diagnose_button.setStyleSheet(self.get_button_style())
+                self.diagnose_button.setText("🩺 Diagnose")
+
+            if type(self.theme_changer_main_wn) == QPushButton:
+                self.theme_changer_main_wn.setStyleSheet(self.get_theme_button_style())
+                self.theme_changer_main_wn.setText(
+                    "🐙 Change to Light Theme" if self.dark_mode else "🐙 Change to Dark Theme")
+        else:
+            self.sidebar.setFixedWidth(60)  # Collapse
+            if type(self.expand_button) == QPushButton:
+                self.expand_button.setStyleSheet(self.get_expand_button_style())
+                self.expand_button.setText("➡️")
+
+            if type(self.home_button) == QPushButton:
+                self.home_button.setStyleSheet(self.get_button_style())
+                self.home_button.setText("🏠")
+
+            if type(self.upload_button) == QPushButton:
+                self.upload_button.setStyleSheet(self.get_button_style())
+                self.upload_button.setText("📤")
+
+            if type(self.diagnose_button) == QPushButton:
+                self.diagnose_button.setStyleSheet(self.get_button_style())
+                self.diagnose_button.setText("🩺")
+
+            if type(self.theme_changer_main_wn) == QPushButton:
+                self.theme_changer_main_wn.setStyleSheet(self.get_theme_button_style())
+                self.theme_changer_main_wn.setText("🌞" if self.dark_mode else "🌚")
+
+    def clear_content_area(self):
+        """Ensure all widgets from the content area are completely removed."""
+        while self.content_layout.count():
+            item = self.content_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()  # Ensure widget is properly deleted
+            elif item.layout():
+                self.clear_layout(item.layout())  # Recursively clear nested layouts
+
+        # Ensure layout refresh
+        self.content_area.update()
+        self.content_area.repaint()
+
+    def clear_layout(self, layout):
+        """Recursively remove all widgets from a layout."""
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                self.clear_layout(item.layout())  # Clear nested layouts
+
+    def show_home_frame(self):
+        """Display the Home frame in the content area with search functionality."""
+        self.clear_content_area()
+
+        # Welcome Message
+        home_label = QLabel(f"Welcome to the Home Page! Hello Dr. {self.username}")
+        home_label.setAlignment(Qt.AlignCenter)
+
+        # Search Bar Layout with White Theme
+        search_layout = QVBoxLayout()
+
+        # Label Styling
+        search_label = QLabel("Search Patient Record:")
+        search_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #333;")
+
+        # Search Input Styling
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Enter search value...")
+        self.search_input.setStyleSheet("""
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 6px;
+            font-size: 14px;
+            margin-bottom: 30px;
+        """)
+        self.search_input.setFocus()
+
+        # Search Options (Modern Radio Buttons)
+        self.search_by_email = QRadioButton("Email")
+        self.search_by_id = QRadioButton("Patient ID")
+        self.search_by_phone = QRadioButton("Phone")
+        self.search_by_email.setChecked(True)  # Default selection
+
+        # Styling for Modern Look
+        radio_style = """
+            QRadioButton {
+                font-size: 14px;
+                color: #333;
+                padding: 4px;
+                font-weight: bold;
+            }
+            QRadioButton::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 9px;
+                border: 2px solid #0078D7;
+                background: white;
+            }
+            QRadioButton::indicator:checked {
+                background: yellow;
+                border: 2px solid #005A9E;
+            }
+        """
+
+        # Apply Styles
+        self.search_by_email.setStyleSheet(radio_style)
+        self.search_by_id.setStyleSheet(radio_style)
+        self.search_by_phone.setStyleSheet(radio_style)
+
+        # Radio Button Layout (Horizontal)
+        radio_layout = QHBoxLayout()
+        radio_layout.setSpacing(15)  # Adds spacing between buttons
+        radio_layout.addWidget(self.search_by_email)
+        radio_layout.addWidget(self.search_by_id)
+        radio_layout.addWidget(self.search_by_phone)
+
+        # increase the bottom margin for radio buttons
+        radio_layout.setContentsMargins(0, 0, 0, 20)
+
+        # Search Button
+        self.search_button = QPushButton("Search")
+        self.search_button.setStyleSheet(self.get_button_style())
+        self.search_button.clicked.connect(self.perform_search)
+
+        # Add Widgets to Search Layout
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.search_input)
+        search_layout.addLayout(radio_layout)
+        search_layout.addWidget(self.search_button)
+
+        # add patient button
+        self.add_patient_button = QPushButton("Add Patient")
+        self.add_patient_button.clicked.connect(self.add_patient___func)
+        self.add_patient_button.setStyleSheet(self.get_button_style())
+        self.content_layout.addWidget(self.add_patient_button)
+
+        # Add Widgets to Content Layout
+        self.content_layout.addWidget(home_label)
+        self.content_layout.addLayout(search_layout)
+
+    def show_upload_frame(self):
+        """Display the Upload frame in the content area."""
+        self.clear_content_area()
+        upload_label = QLabel("Upload your files here!")
+        upload_label.setAlignment(Qt.AlignCenter)
+
+        # Image display area
+        self.image_view = QLabel(self)
+        self.image_view.setAlignment(Qt.AlignCenter)
+        self.content_layout.addWidget(self.image_view)
+
+        # Upload button
+        self.upload_image_button = QPushButton("Upload Image")
+        self.upload_image_button.clicked.connect(self.upload_image)
+        self.upload_image_button.setStyleSheet(self.get_button_style())
+        self.content_layout.addWidget(self.upload_image_button)
+
+        # Classification button (Initially hidden)
+        self.classify_button = QPushButton("Classify Image")
+        self.classify_button.clicked.connect(self.classify_image)
+        self.classify_button.setVisible(False)
+        self.classify_button.setStyleSheet(self.get_button_style())
+        self.content_layout.addWidget(self.classify_button)
+
+        # Output label
+        self.output_label = QLabel(self)
+        self.output_label.setAlignment(Qt.AlignCenter)
+
+        # font style
+        self.output_label.setStyleSheet("font-weight: bold; color: black; font-size: 20px;")
+        self.content_layout.addWidget(self.output_label)
+
+        self.content_layout.addWidget(upload_label)
+
+    def upload_image(self):
+        print("Uploading image...")
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Image File", "",
+                                                   "Images (*.png *.jpg *.jpeg *.bmp *.gif)", options=options)
+
+        print("file path: ", file_path)
+        if file_path:
+            self.image_view.setPixmap(QPixmap(file_path).scaled(300, 300, Qt.KeepAspectRatio))
+            self.classify_button.setVisible(True)
+
+            self.FINAL_FILE_PATH = file_path
+
+    def classify_image(self):
+        # image path
+        from Image.load_image import return_image_path
+        print(return_image_path())
+        self.IMAGE_PATH = return_image_path()
+
+        # Access the Model APIs if necessary
+        from API.ModelAPI.clf_model_connection_api import CLASSIFY_IMAGE_wBOTH_MODELS__for_btcm_mdl_v01s, access_BOTH_models__for_btcm_mdl_v01s
+        h5_model, keras_model = access_BOTH_models__for_btcm_mdl_v01s()
+
+        image_path = self.FINAL_FILE_PATH
+        result = CLASSIFY_IMAGE_wBOTH_MODELS__for_btcm_mdl_v01s(h5_model, keras_model, image_path)
+
+        print("RESULT: ", result)
+        conf_score: float = result[2]
+        print("CONFIDENCE SCORE: ", conf_score)
+        map = {0: 'no_tumor', 1: 'glioma_tumor', 2: 'meningioma_tumor', 3: 'pituitary_tumor'}
+        revmap = {v: k for k, v in map.items()}
+        proper_naming_convention_map = {0: 'No Tumor', 1: 'Glioma Tumor', 2: 'Meningioma Tumor', 3: 'Pituitary Tumor'}
+        result = proper_naming_convention_map[revmap[result[1][0]]]
+        self.output_label.setText("Result: " + result + f"\nCS: {round(conf_score, 6)}")
+        pass
+
+    def set_dark_mode(self):
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(45, 45, 45))
+        palette.setColor(QPalette.WindowText, QColor(255, 255, 255))
+        QApplication.instance().setPalette(palette)
+
+    def get_input_style(self):
+        return (
+            "color: white; background-color: #2b2b2b; border: 1px solid #5a5a5a; border-radius: 5px; padding: 5px;"
+            if self.dark_mode else
+            "color: black; background-color: #f5f5f5; border: 1px solid #cccccc; border-radius: 5px; padding: 5px;"
+        )
+
+    def get_button_style(self):
+        return (
+            "QPushButton{color: white; background-color: #388E3C; border-radius: 8px; font-size: 15px; padding: 12px 32px; "
+            "border: 2px solid #2E7D32; transition: background-color 0.3s ease-in-out;}"
+            "QPushButton:hover { background-color: #2E7D32; }"
+            if self.dark_mode else
+            "QPushButton{color: black; background-color: #64B5F6; border-radius: 8px; font-size: 15px; padding: 12px 32px; "
+            "border: 2px solid #42A5F5; transition: background-color 0.3s ease-in-out;}"
+            "QPushButton:hover { background-color: #42A5F5; }"
+        )
+
+    def get_theme_button_style(self):
+        return (
+            "QPushButton{color: white; background-color: #8E24AA; border-radius: 8px; font-size: 13px; height: 32px; "
+            "padding: 0 12px; border: 2px solid #7B1FA2; transition: background-color 0.3s ease-in-out;}"
+            "QPushButton:hover { background-color: #7B1FA2; }"
+            if self.dark_mode else
+            "QPushButton{color: black; background-color: #FF9800; border-radius: 8px; font-size: 13px; height: 32px; "
+            "padding: 0 12px; border: 2px solid #FB8C00; transition: background-color 0.3s ease-in-out;}"
+            "QPushButton:hover { background-color: #FB8C00; }"
+        )
+
+    def get_expand_button_style(self):
+        return (
+            "QPushButton{color: white; background-color: #43A047; border-radius: 8px; font-size: 15px; padding: 12px 32px; "
+            "margin: 12px 0; border: 2px solid #388E3C; transition: background-color 0.3s ease-in-out;}"
+            "QPushButton:hover { background-color: #388E3C; }"
+            if self.dark_mode else
+            "QPushButton{color: black; background-color: #4FC3F7; border-radius: 8px; font-size: 15px; padding: 12px 32px; "
+            "margin: 12px 0; border: 2px solid #29B6F6; transition: background-color 0.3s ease-in-out;}"
+            "QPushButton:hover { background-color: #29B6F6; }"
+        )
+
+    def perform_search(self):
+        """Perform search based on selected criteria."""
+        search_value = self.search_input.text().strip()
+
+        # Ensure input is not empty
+        if not search_value:
+            QMessageBox.warning(self, "Input Error", "Please enter a search value.")
+            return
+
+        # Determine Search Criteria
+        if self.search_by_email.isChecked():
+            criteria = "email"
+        elif self.search_by_id.isChecked():
+            criteria = "patient_id"
+        elif self.search_by_phone.isChecked():
+            criteria = "phone"
+        else:
+            QMessageBox.warning(self, "Selection Error", "Please select a search criteria.")
+            return
+
+        # Fetch Patient Record (Replace with actual database/query logic)
+        patient_record = self.get_patient_record(search_value, criteria)
+
+        if patient_record:
+            self.display_patient_record(patient_record)
+        else:
+            QMessageBox.information(self, "No Record Found", "No matching patient record was found.")
+
+    @staticmethod
+    def get_patient_record(search_value, criteria):
+        from Main.utils import get_current_system_path, change_path_to_db
+        from API.DatabaseAPI.client_database_connection import get_patient_details, get_tumor_image
+
+        """Fetch patient details and tumor image from the database."""
+        # Get system and database paths
+        PATH_ = get_current_system_path()
+        dbPATH_ = change_path_to_db(PATH_)
+
+        print("------------- PATH:", PATH_)
+        print("------------- dbPATH:", dbPATH_)
+
+        # Retrieve patient details
+        patient_data = get_patient_details(search_value=search_value, criteria=criteria, PATH_=dbPATH_)
+
+        print("DEBUG ============ PATIENT DATA ============\n", patient_data)
+
+        print("True/False: ", patient_data is not None)
+
+        if patient_data is not None:
+            patient_record = {
+                "patient_id": patient_data['patient_id'],
+                "first_name": patient_data['first_name'],
+                "last_name": patient_data['last_name'],
+                "date_of_birth": patient_data['date_of_birth'],
+                "gender": patient_data['gender'],
+                "phone_number": patient_data['phone_number'],
+                "email": patient_data['email'],
+                "image": None  # Placeholder for the image
+            }
+
+            print("DEBUG ============ PATIENT RECORD ============\n", patient_record)
+
+            # Fetch tumor image, image_vector is BLOB
+            image_vector = get_tumor_image(patient_id=patient_record["patient_id"], PATH_=dbPATH_)
+
+            print("DEBUG ============ IMAGE VECTOR ============\n", type(image_vector),
+                  len(image_vector) if image_vector else 0)
+
+            if image_vector:
+                try:
+                    import cv2
+
+                    # Convert BLOB to NumPy array
+                    image_array = np.frombuffer(image_vector, np.uint8)
+                    if image_array.size == 0:
+                        raise ValueError("Empty image data received.")
+
+                    # Debug: Print first few bytes to check the integrity of the image data
+                    print("DEBUG: First 20 bytes of image data:", image_array[:20])
+
+                    # Decode image using OpenCV
+                    image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+                    if image is None:
+                        raise ValueError(
+                            "Failed to decode image. The image data may be corrupted or incorrectly stored.")
+
+                    # Convert OpenCV image (BGR) to RGB
+                    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+                    # Convert to QImage (requires bytesPerLine for correct alignment)
+                    height, width, channel = image.shape
+                    bytes_per_line = channel * width
+                    qImage = QImage(image.data, width, height, bytes_per_line, QImage.Format_RGB888)
+
+                    # Convert to QPixmap
+                    patient_record["image"] = QPixmap.fromImage(qImage)
+
+                except Exception as e:
+                    print("Error decoding image:", e)
+                    patient_record["image"] = "No Image Found"
+
+            else:
+                print("DEBUG: No image found for this patient.")
+                patient_record["image"] = "No Image Found"
+
+            print("DEBUG ============ PATIENT RECORD ============\n", patient_record)
+
+            return patient_record  # Return structured dictionary
+        else:
+            print("No patient record found.")
+            return None
+
+    def display_patient_record(self, patient_record):
+        print("PATIENT --> ", patient_record)
+        """Display patient details along with the image in a QDialog."""
+        if not patient_record:
+            QMessageBox.warning(self, "Error", "No patient record found.")
+            return
+
+        # Create a dialog window
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Patient Record")
+        dialog.setMinimumWidth(400)
+
+        # Layout for patient details
+        layout = QVBoxLayout()
+
+        # Patient details
+        record_info = (
+            f"Patient ID: {patient_record['patient_id']}\n"
+            f"Name: {patient_record['first_name']} {patient_record['last_name']}\n"
+            f"Date of Birth: {patient_record['date_of_birth']}\n"
+            f"Gender: {patient_record['gender']}\n"
+            f"Phone: {patient_record['phone_number']}\n"
+            f"Email: {patient_record['email']}"
+        )
+
+        _image = patient_record["image"]
+
+        # to-pdf button
+        to_pdf_button = QPushButton("To PDF")
+        to_pdf_button.clicked.connect(lambda: self.to_pdf(patient_record))
+
+        # generate report button
+        generate_report_button = QPushButton("Generate Report")
+        generate_report_button.clicked.connect(lambda: self.generate_report(patient_record))
+
+        details_label = QLabel(record_info)
+        layout.addWidget(details_label)
+        layout.addWidget(to_pdf_button)
+        layout.addWidget(generate_report_button)
+
+        # Display image if available
+        if isinstance(patient_record["image"], QPixmap):
+            image_label = QLabel()
+            image_label.setPixmap(patient_record["image"].scaled(200, 200))  # Resize for display
+            layout.addWidget(image_label)
+        else:
+            no_image_label = QLabel("No Image Available")
+            layout.addWidget(no_image_label)
+
+        # Set layout and show dialog
+        dialog.setLayout(layout)
+        dialog.exec_()
+
+    def to_pdf(self, patient_record):
+        """Generate a PDF file with patient details and image."""
+        file_path, _ = QFileDialog.getSaveFileName(None, "Save PDF", "", "PDF Files (*.pdf)")
+        if not file_path:
+            return
+
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+
+        # Title
+        pdf.cell(200, 10, "Patient Record", ln=True, align="C")
+        pdf.ln(10)
+
+        # Patient details
+        details = (
+            f"Patient ID: {patient_record['patient_id']}\n"
+            f"Name: {patient_record['first_name']} {patient_record['last_name']}\n"
+            f"Date of Birth: {patient_record['date_of_birth']}\n"
+            f"Gender: {patient_record['gender']}\n"
+            f"Phone: {patient_record['phone_number']}\n"
+            f"Email: {patient_record['email']}\n"
+        )
+
+        pdf.multi_cell(0, 10, details)
+        pdf.ln(5)  # Space before image
+
+        # Handle the image
+        if isinstance(patient_record["image"], QPixmap):
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_image:
+                temp_path = temp_image.name  # Get temporary file path
+                patient_record["image"].save(temp_path, "PNG")  # Save QPixmap to file
+
+            # Add image to PDF
+            pdf.image(temp_path, x=10, w=60)  # Position & width (adjust as needed)
+
+            # Remove temporary file after adding to PDF
+            os.remove(temp_path)
+
+        else:
+            pdf.cell(200, 10, "No Image Available", ln=True, align="C")
+
+        # Save PDF
+        pdf.output(file_path)
+        QMessageBox.information(None, "Success", f"PDF saved at {file_path}")
+
+    def generate_report(self, patient_record):
+        """Generate a text report with patient details."""
+        file_path, _ = QFileDialog.getSaveFileName(None, "Save Report", "", "Text Files (*.txt)")
+        if not file_path:
+            return
+
+        report_content = (
+            f"Patient ID: {patient_record['patient_id']}\n"
+            f"Name: {patient_record['first_name']} {patient_record['last_name']}\n"
+            f"Date of Birth: {patient_record['date_of_birth']}\n"
+            f"Gender: {patient_record['gender']}\n"
+            f"Phone: {patient_record['phone_number']}\n"
+            f"Email: {patient_record['email']}\n"
+            f"Medical History: {patient_record.get('medical_history', 'Not Available')}\n"
+        )
+
+        try:
+            with open(file_path, "w") as file:
+                file.write(report_content)
+            QMessageBox.information(None, "Success", f"Report saved at {file_path}")
+        except Exception as e:
+            QMessageBox.critical(None, "Error", f"Failed to save report: {str(e)}")
+
+    def add_patient___func(self):
+        from API.DatabaseAPI.client_database_connection import get_doctor_id
+        from Main.utils import get_current_system_path, change_path_to_db
+        from Screens.AddPatientPage import AddPatientPage
+        from Screens.AddPatientDialog import AddPatientDialog
+
+        PATH_ = get_current_system_path()
+        dbPATH_ = change_path_to_db(PATH_)
+
+        doctor_id = get_doctor_id(username=self.username, PATH_=dbPATH_)
+
+        print("doctor_id:", doctor_id)
+
+        if doctor_id:
+            # self.add_patient_window = AddPatientPage(db_path=dbPATH_, doctor_id=doctor_id)
+            # self.add_patient_window.show()
+
+            is_dark_model = self.dark_mode
+            print("DARK MODE: ", is_dark_model)
+
+            self.add_patient_dialog = AddPatientDialog(self, db_path=dbPATH_, doctor_id=doctor_id)
+            self.add_patient_dialog.exec_()
+        pass

@@ -1,0 +1,239 @@
+import sys
+import sqlite3
+import numpy as np
+from PyQt5.QtWidgets import (
+    QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QComboBox, QFileDialog, QTextEdit, QMessageBox, QDateEdit, QApplication
+)
+from PyQt5.QtGui import QPixmap, QPalette, QColor
+from PyQt5.QtCore import Qt
+import cv2  # OpenCV for image processing
+
+
+class AddPatientPage(QWidget):
+    def __init__(self, db_path, doctor_id):
+        super().__init__()
+        self.add_patient_button_ = None
+        self.image_label = None
+        self.medical_history_input = None
+        self.address_input = None
+        self.email_input = None
+        self.phone_input = None
+        self.dob_input = None
+        self.gender_input = None
+        self.last_name_input = None
+        self.first_name_input = None
+        self.upload_button = None
+        self.db_path = db_path  # Database path
+        self.image_path = None  # Store uploaded image path
+        self.image_array = None  # Store NumPy array of image
+        self.doctor_id = doctor_id
+
+        self.init_ui()
+
+    def init_ui(self):
+        """Initialize UI elements"""
+        self.setWindowTitle("Add New Patient")
+        self.setMinimumSize(800, 500)  # Wider window
+
+        layout = QVBoxLayout()
+        form_layout = QGridLayout()
+
+        # Input fields
+        self.first_name_input = QLineEdit()
+        self.last_name_input = QLineEdit()
+
+        # Replacing QLineEdit with QDateEdit for DOB selection
+        self.dob_input = QDateEdit()
+        self.dob_input.setCalendarPopup(True)  # Enables calendar selection
+        self.dob_input.setDisplayFormat("yyyy-MM-dd")  # Format for consistency
+        self.dob_input.setDate(self.dob_input.minimumDate())  # Set default date
+
+        self.gender_input = QComboBox()
+        self.gender_input.addItems(["Male", "Female", "Other"])
+        self.phone_input = QLineEdit()
+        self.email_input = QLineEdit()
+        self.address_input = QTextEdit()
+        self.medical_history_input = QTextEdit()
+
+        # Add form fields to grid layout
+        form_layout.addWidget(QLabel("First Name:"), 0, 0)
+        form_layout.addWidget(self.first_name_input, 0, 1)
+
+        form_layout.addWidget(QLabel("Last Name:"), 1, 0)
+        form_layout.addWidget(self.last_name_input, 1, 1)
+
+        form_layout.addWidget(QLabel("Date of Birth:"), 2, 0)
+        form_layout.addWidget(self.dob_input, 2, 1)
+
+        form_layout.addWidget(QLabel("Gender:"), 3, 0)
+        form_layout.addWidget(self.gender_input, 3, 1)
+
+        form_layout.addWidget(QLabel("Phone Number:"), 4, 0)
+        form_layout.addWidget(self.phone_input, 4, 1)
+
+        form_layout.addWidget(QLabel("Email:"), 5, 0)
+        form_layout.addWidget(self.email_input, 5, 1)
+
+        form_layout.addWidget(QLabel("Address:"), 6, 0)
+        form_layout.addWidget(self.address_input, 6, 1)
+
+        form_layout.addWidget(QLabel("Medical History:"), 7, 0)
+        form_layout.addWidget(self.medical_history_input, 7, 1)
+
+        # Image section
+        self.image_label = QLabel("No Image Uploaded")
+        self.image_label.setAlignment(Qt.AlignCenter)
+        self.image_label.setStyleSheet("border: 1px solid black;")
+        self.image_label.setFixedSize(200, 200)  # Set fixed size for image display
+
+        # Image layout
+        image_layout = QVBoxLayout()
+        image_layout.addWidget(QLabel("Patient Image:"))
+        image_layout.addWidget(self.image_label)
+
+        # Buttons
+        self.upload_button = QPushButton("Upload Image")
+        self.add_patient_button_ = QPushButton("Add Patient")
+
+        # Connect buttons to actions
+        self.upload_button.clicked.connect(self.upload_image)
+        self.add_patient_button_.clicked.connect(self.add_patient_to_db)
+
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.upload_button)
+        button_layout.addWidget(self.add_patient_button_)
+
+        # Add everything to the main layout
+        layout.addLayout(form_layout)
+        layout.addLayout(image_layout)
+        layout.addLayout(button_layout)
+
+        self.setLayout(layout)
+
+    def upload_image(self):
+        """Open file dialog to select an image and store it properly."""
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg *.jpeg)",
+                                                   options=options)
+
+        if file_path:
+            self.image_path = file_path
+
+            # Convert image to QPixmap and display it
+            pixmap = QPixmap(file_path)
+            self.image_label.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio))
+
+            # Convert image to NumPy array & store as a BLOB
+            self.image_array = self.image_to_blob(file_path)
+
+    @staticmethod
+    def image_to_blob(image_path):
+        """Convert an image to a compressed BLOB for SQLite storage"""
+        # Read image in color format (cv2.IMREAD_COLOR ensures proper encoding)
+        image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+
+        if image is None:
+            raise ValueError(f"Error loading image: {image_path}. The file may be corrupted or unreadable.")
+
+        # Convert the image to a compressed format (JPEG/PNG) before storing
+        success, encoded_image = cv2.imencode(".jpg", image)  # Convert to JPG (adjust format if needed)
+        if not success:
+            raise ValueError("Failed to encode image for storage.")
+
+        return encoded_image.tobytes()  # Store as a compressed BLOB
+
+    def add_patient_to_db(self):
+        """Insert patient data into SQLite database"""
+        # Fetch input values
+        print("Adding patient...")
+        first_name = self.first_name_input.text().strip()
+        last_name = self.last_name_input.text().strip()
+        date_of_birth = self.dob_input.date().toString("yyyy-MM-dd").strip()  # Get selected date
+        gender = self.gender_input.currentText().strip()
+        phone_number = self.phone_input.text().strip()
+        email = self.email_input.text().strip()
+        address = self.address_input.toPlainText().strip() or None
+        medical_history = self.medical_history_input.toPlainText().strip() or None
+
+        print(f"First Name: {first_name} \nLast Name: {last_name} \nDate of Birth: {date_of_birth} \nGender: {gender} \nPhone Number: {phone_number} \nEmail: {email} \nAddress: {address} \nMedical History: {medical_history}")
+
+        # Debugging: Print each parameter name and type before inserting
+        parameters = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "date_of_birth": date_of_birth,
+            "gender": gender,
+            "phone_number": phone_number,
+            "email": email,
+            "address": address,
+            "medical_history": medical_history,
+            "doctor_id": self.doctor_id
+        }
+
+        print("\n=== DEBUG: INSERT PARAMETERS ===")
+        for key, value in parameters.items():
+            print(f"{key}: {value} (Type: {type(value)})")
+
+        print()
+        # Validate inputs
+        if not first_name or not last_name or not date_of_birth or not phone_number:
+            QMessageBox.warning(self, "Error", "First Name, Last Name, DOB, and Phone are required!")
+            return
+
+        connection = None
+        try:
+            print("Database: ", self.db_path)
+            connection = sqlite3.connect(self.db_path)
+            cursor = connection.cursor()
+
+            print("HERE")
+
+            # Insert patient details
+            cursor.execute("""
+                INSERT INTO patients (first_name, last_name, date_of_birth, gender, phone_number, email, address, medical_history, doctor_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (first_name, last_name, date_of_birth, gender, phone_number, email, address, medical_history, int(self.doctor_id[0])))
+
+            print("HERE 2")
+
+            patient_id = cursor.lastrowid  # Get the ID of the newly inserted patient
+
+            print("(Done) Patient ID:", patient_id)
+            # Insert image if available
+            if self.image_array:
+                cursor.execute("""
+                                INSERT INTO patient_image_vector (patient_id, image_vector)
+                                VALUES (?, ?)
+                            """, (patient_id, self.image_array))
+
+            connection.commit()
+            QMessageBox.information(self, "Success", "Patient added successfully!")
+
+            # Clear form
+            self.clear_form()
+
+        except sqlite3.Error as e:
+            print(f"Database Error: {e}")
+            QMessageBox.warning(self, "Database Error", str(e))
+
+        finally:
+            if connection:
+                connection.close()
+
+    def clear_form(self):
+        """Reset all input fields and image label"""
+        self.first_name_input.clear()
+        self.last_name_input.clear()
+        self.dob_input.setDate(self.dob_input.minimumDate())  # Reset date
+        self.gender_input.setCurrentIndex(0)
+        self.phone_input.clear()
+        self.email_input.clear()
+        self.address_input.clear()
+        self.medical_history_input.clear()
+        self.image_label.setText("No Image Uploaded")
+        self.image_label.setPixmap(QPixmap())
+        self.image_path = None
+        self.image_array = None
+
