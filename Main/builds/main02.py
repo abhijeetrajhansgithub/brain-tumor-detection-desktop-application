@@ -1,0 +1,387 @@
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel, QStackedWidget
+)
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPalette, QColor
+
+from Screens.ErrorDialog import ErrorDialog
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.theme_changer = None
+        self.setWindowTitle("Login Page")
+        self.setGeometry(100, 100, 400, 300)
+        self.dark_mode = True  # Default to dark mode
+        self.set_dark_mode()  # Apply dark mode
+
+        # Central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        # Create a stacked widget
+        self.stacked_widget = QStackedWidget()
+        central_layout = QVBoxLayout()
+        central_layout.addWidget(self.stacked_widget)
+        central_widget.setLayout(central_layout)
+
+        # Create login and signup pages
+        self.create_login_page()
+        self.create_signup_page()
+
+        # Set the initial page to be the login page
+        self.stacked_widget.setCurrentWidget(self.login_page)
+
+    def create_login_page(self):
+        print("Login Page")
+        self.login_page = QWidget()
+
+        # Main layout for login page
+        main_layout = QVBoxLayout()
+        self.login_page.setLayout(main_layout)
+
+        # Input layout for username and password
+        input_layout = QVBoxLayout()
+
+        # Username input field
+        self.username_layout = QHBoxLayout()
+        self.username_input = QLineEdit()
+        self.username_input.setPlaceholderText("Username")
+        self.username_input.setStyleSheet(self.get_input_style())
+        self.username_input.setMaximumWidth(560)
+
+        # Add username input field to username_layout
+        self.username_layout.addWidget(self.username_input)
+        self.username_layout.setAlignment(Qt.AlignCenter)
+
+        # Add username_layout to input_layout
+        input_layout.addLayout(self.username_layout)
+
+        # Password layout (horizontal layout for password input and peek button)
+        self.password_layout = QHBoxLayout()
+
+        # Password input field
+        self.password_input = QLineEdit()
+        self.password_input.setPlaceholderText("Password")
+        self.password_input.setEchoMode(QLineEdit.Password)  # Start with password hidden
+        self.password_input.setStyleSheet(self.get_input_style())
+        self.password_input.setMaximumWidth(500)
+
+        # Create a small button for peeking the password (with eye symbol)
+        self.peek_button = QPushButton("😎")
+        self.peek_button.setStyleSheet(
+            "width: 30px; height: 30px; font-size: 16px; padding: 0;")  # 30px width and eye symbol
+        self.peek_button.setMaximumWidth(50)
+        self.peek_button.clicked.connect(self.peek_password)
+        # transparent background
+        self.peek_button.setStyleSheet("background-color: transparent; border: none; font-size: 36px;")
+
+        # Add password input and peek button to password_layout
+        self.password_layout.addWidget(self.password_input)
+        self.password_layout.addWidget(self.peek_button)
+        self.password_layout.setAlignment(Qt.AlignCenter)
+
+        # Add password layout to input_layout
+        input_layout.addLayout(self.password_layout)  # Add the password layout instead of input field
+        input_layout.setAlignment(Qt.AlignCenter)
+
+        # Buttons layout
+        buttons_layout = QHBoxLayout()
+        self.login_button = QPushButton("Login")
+        self.signup_button = QPushButton("Signup")
+        self.forgot_password_button = QPushButton("Forgot Password")
+
+        # set max width
+        self.login_button.setMaximumWidth(400)
+        self.signup_button.setMaximumWidth(400)
+        self.forgot_password_button.setMaximumWidth(800)
+
+        # set min width
+        self.login_button.setMinimumWidth(100)
+        self.signup_button.setMinimumWidth(100)
+        self.forgot_password_button.setMinimumWidth(200)
+
+        # Set button styles
+        for button in [self.login_button, self.signup_button, self.forgot_password_button]:
+            button.setStyleSheet(self.get_button_style())
+
+        buttons_layout.addWidget(self.login_button)
+        buttons_layout.addWidget(self.signup_button)
+        buttons_layout.setAlignment(Qt.AlignCenter)
+
+        outer_buttons_layout = QVBoxLayout()
+        outer_buttons_layout.addLayout(buttons_layout)
+        outer_buttons_layout.addWidget(self.forgot_password_button)
+        outer_buttons_layout.setAlignment(Qt.AlignCenter)
+
+        # Button functions
+        self.login_button.clicked.connect(self.check_user_credentials_for_login)
+        self.signup_button.clicked.connect(self.show_signup_page)  # Switch to signup page
+
+        # Add layouts to main layout
+        main_layout.addLayout(input_layout)
+        main_layout.addLayout(buttons_layout)
+        main_layout.addLayout(outer_buttons_layout)
+
+        # Theme changer button
+        self.theme_changer_login = QPushButton("Change theme")
+        self.theme_changer_login.clicked.connect(self.toggle_theme_login)
+        self.theme_changer_login.setStyleSheet(self.get_theme_button_style())
+        main_layout.addWidget(self.theme_changer_login, alignment=Qt.AlignRight | Qt.AlignBottom)
+
+        # Add login page to stacked widget
+        self.stacked_widget.addWidget(self.login_page)
+        print("Login Page Created!")
+
+    def create_signup_page(self):
+        print("Signup Page")
+        self.signup_page = QWidget()
+
+        # Main layout for signup page
+        main_layout = QVBoxLayout()
+        self.signup_page.setLayout(main_layout)
+
+        # Add the necessary input fields for signup (similar to login)
+        input_layout = QVBoxLayout()
+
+        # Username input
+        self.signup_username_input = QLineEdit()
+        self.signup_username_input.setPlaceholderText("Username")
+        self.signup_username_input.setStyleSheet(self.get_input_style())
+        input_layout.addWidget(self.signup_username_input)
+
+        # Password input
+        self.signup_password_input = QLineEdit()
+        self.signup_password_input.setPlaceholderText("Password")
+        self.signup_password_input.setEchoMode(QLineEdit.Password)
+        self.signup_password_input.setStyleSheet(self.get_input_style())
+        input_layout.addWidget(self.signup_password_input)
+
+        # Confirm password input
+        self.confirm_password_input = QLineEdit()
+        self.confirm_password_input.setPlaceholderText("Confirm Password")
+        self.confirm_password_input.setEchoMode(QLineEdit.Password)
+        self.confirm_password_input.setStyleSheet(self.get_input_style())
+        input_layout.addWidget(self.confirm_password_input)
+
+        # Add the inputs to main layout
+        main_layout.addLayout(input_layout)
+
+        # Signup button
+        button_layout = QHBoxLayout()
+        self.login_button_signup = QPushButton("Already have an account? Login!")
+        self.login_button_signup.setStyleSheet(self.get_button_style())
+        self.login_button_signup.clicked.connect(self.show_login_page)
+
+        self.signup_button_signup = QPushButton("Sign Up")
+        self.signup_button_signup.setStyleSheet(self.get_button_style())
+        self.signup_button_signup.clicked.connect(self.signup)
+
+        button_layout.addWidget(self.login_button_signup)
+        button_layout.addWidget(self.signup_button_signup)
+        button_layout.setAlignment(Qt.AlignCenter)
+
+        main_layout.addLayout(button_layout)
+
+        # Theme changer button
+        self.theme_changer_signup = QPushButton("Change Theme")
+        self.theme_changer_signup.clicked.connect(self.toggle_theme_signup)
+        self.theme_changer_signup.setStyleSheet(self.get_theme_button_style())
+        main_layout.addWidget(self.theme_changer_signup, alignment=Qt.AlignRight | Qt.AlignBottom)
+
+        # Add signup page to stacked widget
+        self.stacked_widget.addWidget(self.signup_page)
+        print("Signup Page Created!")
+
+    def signup(self):
+        # Logic to handle signup
+        print("Signup logic to be implemented")
+
+    def show_signup_page(self):
+        # Switch to signup page
+        self.stacked_widget.setCurrentWidget(self.signup_page)
+
+    def show_login_page(self):
+        # Switch to login page
+        self.stacked_widget.setCurrentWidget(self.login_page)
+
+    def peek_password(self):
+        if self.password_input.echoMode() == QLineEdit.Password:
+            self.password_input.setEchoMode(QLineEdit.Normal)
+            # change the text of peek button
+            self.peek_button.setText("🙂")
+        else:
+            self.password_input.setEchoMode(QLineEdit.Password)
+            # change the text of peek button
+            self.peek_button.setText("😎")
+
+    def get_input_style(self):
+        if self.dark_mode:
+            return "color: white; background-color: #2b2b2b; border: 1px solid #5a5a5a; border-radius: 5px; padding: 5px;"
+        else:
+            return "color: black; background-color: #f5f5f5; border: 1px solid #cccccc; border-radius: 5px; padding: 5px;"
+
+    def get_button_style(self):
+        if self.dark_mode:
+            return (
+                "color: white; background-color: #4caf50; border: none; padding: 10px 30px 10px 30px;"
+                "border-radius: 5px; font-size: 14px;"
+            )
+        else:
+            return (
+                "color: black; background-color: #87ceeb; border: none; padding: 10px 30px 10px 30px;"
+                "border-radius: 5px; font-size: 14px;"
+            )
+
+    def get_theme_button_style(self):
+        if self.dark_mode:
+            return (
+                "color: white; background-color: #9c27b0; border: none; padding: 8px;"
+                "border-radius: 5px; font-size: 12px;"
+            )
+        else:
+            return (
+                "color: black; background-color: #ffb74d; border: none; padding: 8px;"
+                "border-radius: 5px; font-size: 12px;"
+            )
+
+    def set_dark_mode(self):
+        self.dark_mode = True
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(45, 45, 45))
+        palette.setColor(QPalette.WindowText, QColor(255, 255, 255))
+        palette.setColor(QPalette.Base, QColor(35, 35, 35))
+        palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+        palette.setColor(QPalette.ToolTipBase, QColor(255, 255, 255))
+        palette.setColor(QPalette.ToolTipText, QColor(255, 255, 255))
+        palette.setColor(QPalette.Text, QColor(255, 255, 255))
+        palette.setColor(QPalette.Button, QColor(53, 53, 53))
+        palette.setColor(QPalette.ButtonText, QColor(255, 255, 255))
+        palette.setColor(QPalette.Highlight, QColor(142, 45, 197))
+        palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
+        QApplication.instance().setPalette(palette)
+
+        try:
+            if type(self.login_button) == QPushButton:
+                self.login_button.setStyleSheet(self.get_button_style())
+            if type(self.signup_button) == QPushButton:
+                self.signup_button.setStyleSheet(self.get_button_style())
+            if type(self.forgot_password_button) == QPushButton:
+                self.forgot_password_button.setStyleSheet(self.get_button_style())
+            if type(self.username_input) == QLineEdit:
+                self.username_input.setStyleSheet(self.get_input_style())
+            if type(self.password_input) == QLineEdit:
+                self.password_input.setStyleSheet(self.get_input_style())
+            if type(self.confirm_password_input) == QLineEdit:
+                self.confirm_password_input.setStyleSheet(self.get_input_style())
+            if type(self.signup_username_input) == QLineEdit:
+                self.signup_username_input.setStyleSheet(self.get_input_style())
+            if type(self.signup_password_input) == QLineEdit:
+                self.signup_password_input.setStyleSheet(self.get_input_style())
+            if type(self.login_button_signup) == QPushButton:
+                self.login_button_signup.setStyleSheet(self.get_button_style())
+            if type(self.signup_button_signup) == QPushButton:
+                self.signup_button_signup.setStyleSheet(self.get_button_style())
+        except AttributeError:
+            pass
+
+        self.update_styles()
+
+    def set_light_mode(self):
+        self.dark_mode = False
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(255, 255, 255))
+        palette.setColor(QPalette.WindowText, QColor(0, 0, 0))
+        palette.setColor(QPalette.Base, QColor(240, 240, 240))
+        palette.setColor(QPalette.AlternateBase, QColor(255, 255, 255))
+        palette.setColor(QPalette.ToolTipBase, QColor(0, 0, 0))
+        palette.setColor(QPalette.ToolTipText, QColor(0, 0, 0))
+        palette.setColor(QPalette.Text, QColor(0, 0, 0))
+        palette.setColor(QPalette.Button, QColor(240, 240, 240))
+        palette.setColor(QPalette.ButtonText, QColor(0, 0, 0))
+        palette.setColor(QPalette.Highlight, QColor(30, 144, 255))
+        palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
+
+        # change the color of self.theme_changer QPushButton
+        try:
+            if type(self.login_button) == QPushButton:
+                self.login_button.setStyleSheet(self.get_button_style())
+            if type(self.signup_button) == QPushButton:
+                self.signup_button.setStyleSheet(self.get_button_style())
+            if type(self.forgot_password_button) == QPushButton:
+                self.forgot_password_button.setStyleSheet(self.get_button_style())
+            if type(self.username_input) == QLineEdit:
+                self.username_input.setStyleSheet(self.get_input_style())
+            if type(self.password_input) == QLineEdit:
+                self.password_input.setStyleSheet(self.get_input_style())
+            if type(self.confirm_password_input) == QLineEdit:
+                self.confirm_password_input.setStyleSheet(self.get_input_style())
+            if type(self.signup_username_input) == QLineEdit:
+                self.signup_username_input.setStyleSheet(self.get_input_style())
+            if type(self.signup_password_input) == QLineEdit:
+                self.signup_password_input.setStyleSheet(self.get_input_style())
+            if type(self.login_button_signup) == QPushButton:
+                self.login_button_signup.setStyleSheet(self.get_button_style())
+            if type(self.signup_button_signup) == QPushButton:
+                self.signup_button_signup.setStyleSheet(self.get_button_style())
+
+        except AttributeError:
+            pass
+
+        QApplication.instance().setPalette(palette)
+
+        self.update_styles()
+
+    def toggle_theme_login(self):
+        if self.dark_mode:
+            self.set_light_mode()
+            self.theme_changer.setText("Switch to Dark Mode")
+            print(10)
+        else:
+            self.set_dark_mode()
+            self.theme_changer.setText("Switch to Light Mode")
+            print(20)
+
+    def toggle_theme_signup(self):
+        if self.dark_mode:
+            self.set_light_mode()
+            self.theme_changer.setText("Switch to Dark Mode")
+            print(10)
+        else:
+            self.set_dark_mode()
+            self.theme_changer.setText("Switch to Light Mode")
+            print(20)
+
+    def update_styles(self):
+        print("Updating styles...")
+
+    def get_username(self):
+        return self.username_input.text()
+
+    def get_password(self):
+        return self.password_input.text()
+
+    def check_user_credentials_for_login(self):
+        print("Checking user credentials...")
+        username = self.get_username()
+        password = self.get_password()
+        print(f"Username: {username}, Password: {password}")
+        if len(username) == 0 or len(password) == 0:
+            dialog = ErrorDialog("Please enter username and password!")
+            dialog.exec_()
+        else:
+            print("Login logic to be implemented")
+
+
+class MainApplication(QApplication):
+    def __init__(self):
+        super().__init__([])
+        self.main_window = MainWindow()
+        self.main_window.show()
+
+
+if __name__ == "__main__":
+    app = MainApplication()
+    app.exec_()

@@ -1,0 +1,58 @@
+from Database.db_interactions import (add_user, authenticate_user, check_username_unique,
+                                      check_email_unique, username_exists, get_user_details,
+                                      get_salt_user)
+
+def register_user(username, email, password, PATH_, first_name=None, last_name=None, phone_number=None):
+    boolean = add_user(username, email, password, PATH_, first_name, last_name, phone_number)
+    if boolean:
+        return {"status": "success", "message": f"User {username} added successfully!", "boolean": True}
+    else:
+        return {"status": "error", "message": f"User {username} already exists!", "boolean": False}
+
+
+def authenticate(username, password, PATH_):
+    salt = get_salt(username, PATH_)
+    print("SALT:", salt)
+    boolean = authenticate_user(username, password, salt, PATH_)
+    if boolean:
+        return {"status": "success", "message": f"User {username} authenticated successfully!", "boolean": True}
+    else:
+        return {"status": "error", "message": f"User {username} not authenticated!", "boolean": False}
+
+
+def logout_user(username):
+    # Perform logout logic here
+    return {"status": "success", "message": f"User {username} logged out successfully!"}
+
+
+def check_username_uniqueness(username, PATH_):
+    boolean = check_username_unique(username, PATH_)
+    if boolean:
+        return {"status": "success", "message": f"Username {username} is unique!", "boolean": True}
+    else:
+        return {"status": "error", "message": f"Username {username} is not unique!", "boolean": False}
+
+
+def check_email_uniqueness(email, PATH_):
+    boolean = check_email_unique(email, PATH_)
+    if boolean:
+        return {"status": "success", "message": f"Email {email} is unique!", "boolean": True}
+    else:
+        return {"status": "error", "message": f"Email {email} is not unique!", "boolean": False}
+
+
+def check_username_existence(username, PATH_):
+    boolean = username_exists(username, PATH_)
+    if boolean:
+        return {"status": "success", "message": f"Username {username} exists!", "boolean": True}
+    else:
+        return {"status": "error", "message": f"Username {username} does not exist!", "boolean": False}
+
+
+def get_details(username, PATH_):
+    details = get_user_details(username, PATH_)
+    return details
+
+def get_salt(username, PATH_):
+    salt = get_salt_user(username, PATH_)
+    return salt

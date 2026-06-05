@@ -1,0 +1,243 @@
+import hashlib
+import sqlite3
+
+from Database.salting import generate_salt
+
+connection = None
+
+def hash_password(password, salt: tuple):
+    print(f"HASHING - PASSWORD: {password}, SALT LENGTH: {len(salt)}, SALT TYPE: {type(salt)}, SALT: {salt}")
+    print("HASHED PASSWORD:", hashlib.sha512((password + salt).encode()).hexdigest())
+    return hashlib.sha512((password + salt).encode()).hexdigest()
+
+
+# Insert a new user into the database
+def add_user(username, email, password, PATH_, first_name=None, last_name=None, phone_number=None):
+    global connection
+    try:
+        connection = sqlite3.connect(PATH_)
+        cursor = connection.cursor()
+
+        # Hash the password (for simplicity, not using a salt here)
+        SALT = generate_salt(512)
+        password_hash = hash_password(password, SALT)
+
+        # SQL to insert the user
+        insert_query = """
+        INSERT INTO users (username, email, password_hash, salt, first_name, last_name, phone_number)
+        VALUES (?, ?, ?, ?, ?, ?, ?);
+        """
+        cursor.execute(insert_query, (username, email, password_hash, SALT, first_name, last_name, phone_number))
+
+        connection.commit()
+        print(f"User {username} added successfully!")
+
+        return True
+
+    except sqlite3.IntegrityError as e:
+        print(f"Error: {e}")
+        return False  # User already exists
+
+    except sqlite3.Error as e:
+        print(f"Error: {e}")
+        return False
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+
+    finally:
+        connection.close()
+
+
+def authenticate_user(username, password, salt, PATH_):
+    global connection
+    print(f'USERNAME: {username}, PASSWORD: {password}, SALT: {salt}')
+    try:
+        connection = sqlite3.connect(PATH_)
+        cursor = connection.cursor()
+
+        # SQL to select the user by username
+        select_query = "SELECT * FROM users WHERE username = ?;"
+        cursor.execute(select_query, (username,))
+
+        user = cursor.fetchone()
+        print("USER:", user)
+
+        if user:
+            print("USER[3]:", user[3])
+            # Hash the provided password and compare with the stored hash
+            provided_password_hash = hash_password(password, salt)
+            print("PROVIDED PASSWORD HASH:", provided_password_hash)
+            if provided_password_hash == user[3]:
+                print("Authentication successful!")
+                return True  # Authentication successful
+            else:
+                return False  # Incorrect password
+        else:
+            return False  # User not found
+
+    except sqlite3.Error as e:
+        print(f"Error: {e}")
+
+    finally:
+        connection.close()
+
+
+def remove_user(identifier, PATH_, by="username"):
+    """
+    Removes a user from the database by username or user_id.
+
+    Parameters:
+        identifier: The value of the username or user_id to identify the user.
+        by: The column to use for identification ("username" or "user_id").
+        :param by: username or user_id
+        :param identifier:  username or user_id
+        :param PATH_: path to database
+    """
+    global connection
+    try:
+        connection = sqlite3.connect(PATH_)
+        cursor = connection.cursor()
+
+        # Determine the column to use for identification
+        if by == "user_id":
+            delete_query = "DELETE FROM users WHERE user_id = ?;"
+        elif by == "username":
+            delete_query = "DELETE FROM users WHERE username = ?;"
+        else:
+            print("Error: Invalid identifier type. Use 'username' or 'user_id'.")
+            return
+
+        # Execute the delete query
+        cursor.execute(delete_query, (identifier,))
+        connection.commit()
+
+        if cursor.rowcount > 0:
+            print(f"User with {by} '{identifier}' removed successfully.")
+        else:
+            print(f"No user found with {by} '{identifier}'.")
+
+    except sqlite3.Error as e:
+        print(f"Error: {e}")
+
+    finally:
+        connection.close()
+
+
+def check_username_unique(username, PATH_):
+    global connection
+    try:
+        connection = sqlite3.connect(PATH_)
+        cursor = connection.cursor()
+
+        # SQL to select the user by username
+        select_query = "SELECT * FROM users WHERE username = ?;"
+        cursor.execute(select_query, (username,))
+
+        user = cursor.fetchone()
+
+        if user:
+            return False  # Username already exists
+        else:
+            return True  # Username is unique
+
+    except sqlite3.Error as e:
+        print(f"Error: {e}")
+        return False
+
+    finally:
+        connection.close()
+
+
+def check_email_unique(email, PATH_):
+    global connection
+    try:
+        connection = sqlite3.connect(PATH_)
+        cursor = connection.cursor()
+
+        # SQL to select the user by email
+        select_query = "SELECT * FROM users WHERE email = ?;"
+        cursor.execute(select_query, (email,))
+
+        user = cursor.fetchone()
+
+        if user:
+            return False  # Email already exists
+        else:
+            return True  # Email is unique
+
+    except sqlite3.Error as e:
+        print(f"Error: {e}")
+        return False
+
+    finally:
+        connection.close()
+
+def username_exists(username, PATH_):
+    global connection
+    try:
+        connection = sqlite3.connect(PATH_)
+        cursor = connection.cursor()
+
+        # SQL to select the user by username
+        select_query = "SELECT * FROM users WHERE username = ?;"
+        cursor.execute(select_query, (username,))
+
+        user = cursor.fetchone()
+
+        if user:
+            return True  # Username exists
+        else:
+            return False  # Username does not exist
+
+    except sqlite3.Error as e:
+        print(f"Error: {e}")
+        return False
+
+    finally:
+        connection.close()
+
+
+def get_user_details(username, PATH_):
+    global connection
+    try:
+        connection = sqlite3.connect(PATH_)
+        cursor = connection.cursor()
+
+        # SQL to select the user by username
+        select_query = "SELECT * FROM users WHERE username = ?;"
+        cursor.execute(select_query, (username,))
+
+        user = cursor.fetchone()
+
+        return user
+
+    except sqlite3.Error as e:
+        print(f"Error: {e}")
+        return None
+
+    finally:
+        connection.close()
+
+
+def get_salt_user(username, PATH_):
+    global connection
+    try:
+        connection = sqlite3.connect(PATH_)
+        cursor = connection.cursor()
+
+        # SQL to select the user by username
+        select_query = "SELECT salt FROM users WHERE username = ?;"
+        cursor.execute(select_query, (username,))
+
+        salt = cursor.fetchone()
+
+        return salt
+
+    except sqlite3.Error as e:
+        print(f"Error: {e}")
+        return None
+
+    finally:
+        connection.close()

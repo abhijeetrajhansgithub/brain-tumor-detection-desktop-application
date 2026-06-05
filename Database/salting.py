@@ -1,0 +1,13 @@
+import hashlib
+import secrets
+
+def generate_salt(length=512):
+    return secrets.token_hex(length // 2)
+
+def test_salting(password, salt):
+    return hashlib.sha512((password + salt).encode()).hexdigest()
+
+# password_ = "a"
+# salt_ = "1dc34bc450a70fb83ed54f503aa64ff3e2e25a9abc41986b29d1d4c2cce6771ca249869def57437c5da572501246c21bffadc8bddb98c3dfb7dd481d8e8baf3ef1873ef9d2f4968087b264b9c787147072669bcf76ea886409629458fb3657dd361f484ac9a606a1dccbcbc6c5e57643c8bbc5d74a24a5deed45fd576188e0295afbbaaf9c5716b9fce1db4b8d39cd4a15e353366e424dc45373835824e8114093dc6460ef183f4dab9ccd0f8efd3e06be0ae0c7572fc7d865f2522649f810f300da4e3f356ea26418f6f62a655dab58d1a3c2f2249d1750c882582aa9ecb0a16bade9c74e8d00ca82e673d6e8509203e0ad3018e9010f2fbdcec225405fdd9b"
+#
+# print(test_salting(password_, salt_))
