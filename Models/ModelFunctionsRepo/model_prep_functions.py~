@@ -1,0 +1,312 @@
+def __LOAD_MODELS__for_btcm_mdl_v01s():
+    """
+    Load model paths using the GET_MODEL_PATHS function from Models.load_model.
+
+    Returns:
+        tuple: Paths to h5 and keras models.
+    """
+    from Models.load_model import GET_MODEL_PATHS__for_btcm_mdl_v01s
+    h5_MODEL_path, keras_MODEL_path = GET_MODEL_PATHS__for_btcm_mdl_v01s()
+
+    return h5_MODEL_path, keras_MODEL_path
+
+
+def __LOAD_MODELS__for_btcm_mdl_21ms():
+    """
+    Load model paths using the GET_MODEL_PATHS function from Models.load_model.
+
+    Returns:
+        tuple: Paths to h5 and keras models.
+    """
+    from Models.load_model import GET_MODEL_PATHS__for_btcm_mdl_21ms
+    h5_MODEL_path, keras_MODEL_path = GET_MODEL_PATHS__for_btcm_mdl_21ms()
+
+    return h5_MODEL_path, keras_MODEL_path
+
+
+def __LOAD_MODELS_for_xAI():
+    """
+    Load model paths using the GET_MODEL_PATHS function from Models.load_model.
+
+    Returns:
+        tuple: Paths to h5 and keras models.
+    """
+    from Models.load_model import GET_XAI_MODEL_PATHS
+    h5_MODEL_path, keras_MODEL_path = GET_XAI_MODEL_PATHS()
+
+    print("* * * h5_MODEL_path, keras_MODEL_path: ", h5_MODEL_path, keras_MODEL_path)
+
+    return h5_MODEL_path, keras_MODEL_path
+
+
+def __CLASSIFY_IMAGE_btcm_mdl_v01(h5_MODEL_path, keras_MODEL_path, image_path, img_size=150):
+    """
+    Classify an image using both h5 and keras models, and check if the results are the same.
+
+    Args:
+        h5_MODEL_path (str): Path to the h5 model.
+        keras_MODEL_path (str): Path to the keras model.
+        image_path (str): Path to the image to be classified.
+        img_size (int, optional): Size to which the image is resized. Defaults to 150.
+
+    Returns:
+        tuple: Predicted class and its label if the predictions are the same, else (-1, ("Error", -1)).
+    """
+    import warnings
+    warnings.filterwarnings("ignore")
+
+    import cv2
+    import numpy as np
+    from tensorflow.keras.models import load_model
+
+    label_mapping = {
+        0: ('no_tumor', 0),
+        1: ('glioma_tumor', 1),
+        2: ('meningioma_tumor', 2),
+        3: ('pituitary_tumor', 3)
+    }
+    print("2. Image path: ", image_path)
+
+    IMAGE = cv2.imread(image_path)
+    print("3. Image: ", IMAGE)
+
+    img_resized = cv2.resize(IMAGE, (img_size, img_size)).astype(np.float32) / 255.0
+    img_resized = np.expand_dims(img_resized, axis=0)
+
+    # Load h5 model
+    _h5_model = load_model(h5_MODEL_path)
+
+    # Load keras model
+    _keras_model = load_model(keras_MODEL_path)
+
+    # Predict using the keras model
+    predictions_keras = _keras_model.predict(img_resized)
+    predictions_h5 = _h5_model.predict(img_resized)
+
+    predictions = None
+    if np.argmax(predictions_h5) == np.argmax(predictions_keras):
+        predictions = predictions_keras
+    else:
+        return -1, ("Error", -1)
+
+    predicted_class = np.argmax(predictions)
+    confidence_score = np.max(predictions)
+    print(f"Image: {image_path}")
+    print(f"Prediction: {predictions}")
+    print(f"Confidence Score: {confidence_score:.2f}")
+    print(f"Predicted Class: {predicted_class} ({label_mapping[predicted_class]})\n")
+
+    return predicted_class, label_mapping[predicted_class], float(confidence_score)
+
+# h5_model, keras_model = __LOAD_MODELS()
+# print("model_prep_functions.py: ", __CLASSIFY_IMAGE(h5_model, keras_model))
+
+
+def _CLASSIFY_IMAGE_btcm_mdl_21m(h5_MODEL_path, keras_MODEL_path, image_path, img_size=150):
+    """
+       Classify an image using both h5 and keras models, and check if the results are the same.
+
+       Args:
+           h5_MODEL_path (str): Path to the h5 model.
+           keras_MODEL_path (str): Path to the keras model.
+           image_path (str): Path to the image to be classified.
+           img_size (int, optional): Size to which the image is resized. Defaults to 150.
+
+       Returns:
+           tuple: Predicted class and its label if the predictions are the same, else (-1, ("Error", -1)).
+       """
+    import warnings
+    warnings.filterwarnings("ignore")
+
+    import cv2
+    import numpy as np
+    from tensorflow.keras.models import load_model
+
+    label_mapping = {
+        0: ('no_tumor', 0),
+        1: ('glioma_tumor', 1),
+        2: ('meningioma_tumor', 2),
+        3: ('pituitary_tumor', 3)
+    }
+    print("2. Image path: ", image_path)
+
+    IMAGE = cv2.imread(image_path)
+    print("3. Image: ", IMAGE)
+
+    img_resized = cv2.resize(IMAGE, (img_size, img_size)).astype(np.float32) / 255.0
+    img_resized = np.expand_dims(img_resized, axis=0)
+
+    # Load h5 model
+    _h5_model = load_model(h5_MODEL_path)
+
+    # Load keras model
+    _keras_model = load_model(keras_MODEL_path)
+
+    # Predict using the keras model
+    predictions_keras = _keras_model.predict(img_resized)
+    predictions_h5 = _h5_model.predict(img_resized)
+
+    predictions = None
+    if np.argmax(predictions_h5) == np.argmax(predictions_keras):
+        predictions = predictions_keras
+    else:
+        return -1, ("Error", -1)
+
+    predicted_class = np.argmax(predictions)
+    confidence_score = np.max(predictions)
+    print(f"Image: {image_path}")
+    print(f"Prediction: {predictions}")
+    print(f"Confidence Score: {confidence_score:.2f}")
+    print(f"Predicted Class: {predicted_class} ({label_mapping[predicted_class]})\n")
+
+    return predicted_class, label_mapping[predicted_class], float(confidence_score)
+
+
+
+#####################################################################################################
+
+def __CLASSIFY_IMAGE_btcm_mdl_v01_using_direct_pixmap(h5_MODEL_path, keras_MODEL_path, image_pixmap, img_size=150):
+    """
+    Classify an image using both h5 and keras models, and check if the results are the same.
+
+    Args:
+        h5_MODEL_path (str): Path to the h5 model.
+        keras_MODEL_path (str): Path to the keras model.
+        image_pixmap (QPixmap): Image in QPixmap format.
+        img_size (int, optional): Size to which the image is resized. Defaults to 150.
+
+    Returns:
+        tuple: Predicted class and its label if the predictions are the same, else (-1, ("Error", -1)).
+    """
+    import warnings
+    warnings.filterwarnings("ignore")
+
+    import numpy as np
+    from tensorflow.keras.models import load_model
+    from PyQt5.QtGui import QImage
+    import cv2
+
+    label_mapping = {
+        0: ('no_tumor', 0),
+        1: ('glioma_tumor', 1),
+        2: ('meningioma_tumor', 2),
+        3: ('pituitary_tumor', 3)
+    }
+
+    print("2. Image received as QPixmap")
+
+    # Convert QPixmap to QImage
+    qimage = image_pixmap.toImage()
+    width, height = qimage.width(), qimage.height()
+
+    # Convert QImage to NumPy array (RGB format)
+    buffer = qimage.bits()
+    buffer.setsize(width * height * 4)  # 4 bytes per pixel (RGBA)
+    IMAGE = np.array(buffer).reshape((height, width, 4))  # Convert to NumPy array
+
+    # Convert RGBA to RGB (drop the alpha channel)
+    IMAGE = cv2.cvtColor(IMAGE, cv2.COLOR_RGBA2RGB)
+
+    print("3. Image converted to NumPy array:", IMAGE.shape)
+
+    img_resized = cv2.resize(IMAGE, (img_size, img_size)).astype(np.float32) / 255.0
+    img_resized = np.expand_dims(img_resized, axis=0)
+
+    # Load h5 model
+    _h5_model = load_model(h5_MODEL_path)
+
+    # Load keras model
+    _keras_model = load_model(keras_MODEL_path)
+
+    # Predict using the keras model
+    predictions_keras = _keras_model.predict(img_resized)
+    predictions_h5 = _h5_model.predict(img_resized)
+
+    predictions = None
+    if np.argmax(predictions_h5) == np.argmax(predictions_keras):
+        predictions = predictions_keras
+    else:
+        return -1, ("Error", -1)
+
+    predicted_class = np.argmax(predictions)
+    confidence_score = np.max(predictions)
+
+    print(f"Prediction: {predictions}")
+    print(f"Confidence Score: {confidence_score:.2f}")
+    print(f"Predicted Class: {predicted_class} ({label_mapping[predicted_class]})\n")
+
+    return predicted_class, label_mapping[predicted_class], float(confidence_score)
+
+
+def __CLASSIFY_IMAGE_btcm_mdl_21m_using_direct_pixmap(h5_MODEL_path, keras_MODEL_path, image_pixmap, img_size=150):
+    """
+       Classify an image using both h5 and keras models, and check if the results are the same.
+
+       Args:
+           h5_MODEL_path (str): Path to the h5 model.
+           keras_MODEL_path (str): Path to the keras model.
+           image_pixmap (QPixmap): Image in QPixmap format.
+           img_size (int, optional): Size to which the image is resized. Defaults to 150.
+
+       Returns:
+           tuple: Predicted class and its label if the predictions are the same, else (-1, ("Error", -1)).
+       """
+    import warnings
+    warnings.filterwarnings("ignore")
+
+    import numpy as np
+    from tensorflow.keras.models import load_model
+    from PyQt5.QtGui import QImage
+    import cv2
+
+    label_mapping = {
+        0: ('no_tumor', 0),
+        1: ('glioma_tumor', 1),
+        2: ('meningioma_tumor', 2),
+        3: ('pituitary_tumor', 3)
+    }
+
+    print("2. Image received as QPixmap")
+
+    # Convert QPixmap to QImage
+    qimage = image_pixmap.toImage()
+    width, height = qimage.width(), qimage.height()
+
+    # Convert QImage to NumPy array (RGB format)
+    buffer = qimage.bits()
+    buffer.setsize(width * height * 4)  # 4 bytes per pixel (RGBA)
+    IMAGE = np.array(buffer).reshape((height, width, 4))  # Convert to NumPy array
+
+    # Convert RGBA to RGB (drop the alpha channel)
+    IMAGE = cv2.cvtColor(IMAGE, cv2.COLOR_RGBA2RGB)
+
+    print("3. Image converted to NumPy array:", IMAGE.shape)
+
+    img_resized = cv2.resize(IMAGE, (img_size, img_size)).astype(np.float32) / 255.0
+    img_resized = np.expand_dims(img_resized, axis=0)
+
+    # Load h5 model
+    _h5_model = load_model(h5_MODEL_path)
+
+    # Load keras model
+    _keras_model = load_model(keras_MODEL_path)
+
+    # Predict using both models
+    predictions_keras = _keras_model.predict(img_resized)
+    predictions_h5 = _h5_model.predict(img_resized)
+
+    predictions = None
+    if np.argmax(predictions_h5) == np.argmax(predictions_keras):
+        predictions = predictions_keras
+    else:
+        return -1, ("Error", -1)
+
+    predicted_class = np.argmax(predictions)
+    confidence_score = np.max(predictions)
+
+    print(f"Prediction: {predictions}")
+    print(f"Confidence Score: {confidence_score:.2f}")
+    print(f"Predicted Class: {predicted_class} ({label_mapping[predicted_class]})\n")
+
+    return predicted_class, label_mapping[predicted_class], float(confidence_score)
+

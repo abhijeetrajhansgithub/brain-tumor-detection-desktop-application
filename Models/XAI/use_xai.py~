@@ -1,0 +1,131 @@
+import numpy as np
+import cv2
+import tensorflow as tf
+import matplotlib.pyplot as plt
+from tensorflow.keras.models import load_model
+from tensorflow.keras import backend as K
+
+import numpy as np
+import tensorflow as tf
+
+
+def get_gradcam_heatmap(model, img_array, last_conv_layer_name="conv2d"):
+    # Ensure the model is built by running a dummy input through it
+    if not model.built:
+        dummy_input = tf.zeros((1, 150, 150, 3))  # Adjust shape based on your model
+        model(dummy_input)  # Forward pass to initialize layers
+
+    # Now safely access model.input
+    grad_model = tf.keras.models.Model(
+        inputs=model.input,  # No more AttributeError
+        outputs=[model.get_layer(last_conv_layer_name).output, model.output]
+    )
+
+    with tf.GradientTape() as tape:
+        conv_outputs, predictions = grad_model(img_array)
+        class_idx = tf.argmax(predictions[0])
+        loss = predictions[:, class_idx]
+
+    grads = tape.gradient(loss, conv_outputs)
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+
+    conv_outputs = conv_outputs[0]
+    pooled_grads = pooled_grads.numpy()
+
+    for i in range(pooled_grads.shape[-1]):
+        conv_outputs[:, :, i] *= pooled_grads[i]
+
+    heatmap = np.mean(conv_outputs, axis=-1)
+    heatmap = np.maximum(heatmap, 0)  # ReLU
+    heatmap /= np.max(heatmap)  # Normalize
+
+    return heatmap
+
+
+
+def overlay_heatmap(image_path, heatmap, alpha=0.4):
+    """
+    Overlays the Grad-CAM heatmap on the original image.
+
+    Args:
+        image_path (str): Path to the original image.
+        heatmap (numpy array): Generated Grad-CAM heatmap.
+        alpha (float): Transparency level of heatmap overlay.
+
+    Returns:
+        numpy array: Image with heatmap overlay.
+    """
+    image = cv2.imread(image_path)
+    image = cv2.resize(image, (150, 150))
+
+    heatmap = cv2.resize(heatmap, (image.shape[1], image.shape[0]))
+    heatmap = np.uint8(255 * heatmap)
+    heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+
+    overlayed_image = cv2.addWeighted(image, 1 - alpha, heatmap, alpha, 0)
+
+    return overlayed_image
+
+
+def classify_and_explain(h5_MODEL_path, keras_MODEL_path, image_path, last_conv_layer="conv2d"):
+    """
+    Classifies an image and generates an XAI visualization using Grad-CAM.
+
+    Args:
+        h5_MODEL_path (str): Path to the .h5 model.
+        keras_MODEL_path (str): Path to the Keras model.
+        image_path (str): Path to the image.
+        last_conv_layer (str): Last convolutional layer name.
+
+    Returns:
+        tuple: Predicted class, label, confidence score, and Grad-CAM visualization.
+    """
+    label_mapping = {
+        0: ('no_tumor', 0),
+        1: ('glioma_tumor', 1),
+        2: ('meningioma_tumor', 2),
+        3: ('pituitary_tumor', 3)
+    }
+
+    image = cv2.imread(image_path)
+    img_resized = cv2.resize(image, (150, 150)).astype(np.float32) / 255.0
+    img_resized = np.expand_dims(img_resized, axis=0)
+
+    # Load models
+    model_h5 = load_model(h5_MODEL_path)
+    model_keras = load_model(keras_MODEL_path)
+
+    # Get predictions
+    pred_h5 = model_h5.predict(img_resized)
+    pred_keras = model_keras.predict(img_resized)
+
+    if np.argmax(pred_h5) != np.argmax(pred_keras):
+        return -1, ("Error", -1), None
+
+    predicted_class = np.argmax(pred_h5)
+    confidence_score = np.max(pred_h5)
+
+    print(f"Prediction: {label_mapping[predicted_class]} with confidence {confidence_score:.2f}")
+
+    # Generate Grad-CAM heatmap
+    heatmap = get_gradcam_heatmap(model_h5, img_resized, last_conv_layer)
+    overlay_image = overlay_heatmap(image_path, heatmap)
+
+    # Display results
+    plt.figure(figsize=(10, 4))
+    plt.subplot(1, 2, 1)
+    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    plt.title("Original Image")
+    plt.axis("off")
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(cv2.cvtColor(overlay_image, cv2.COLOR_BGR2RGB))
+    plt.title("Grad-CAM Heatmap")
+    plt.axis("off")
+
+    plt.show()
+
+    return predicted_class, label_mapping[predicted_class], confidence_score
+
+# Example Usage:
+classify_and_explain("../model_v01_xai/btcm-mdl-v01-xai.h5", "../model_v01_xai/btcm-mdl-v01-xai.keras", "../../Image/image.jpg")

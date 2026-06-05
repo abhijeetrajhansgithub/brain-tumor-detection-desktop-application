@@ -1,0 +1,181 @@
+import cv2
+import numpy as np
+import tensorflow as tf
+from PIL import Image
+from PyQt5.QtGui import QPixmap, QImage
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
+import matplotlib.pyplot as plt
+from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtCore import Qt
+import numpy as np
+
+
+
+def preprocess_image(pil_image, target_size=(150, 150)):
+    """Load and preprocess the image for model input."""
+    # resize the image to the target size
+    pil_image = pil_image.resize(target_size)
+    print("resize image done!")
+    img_array = image.img_to_array(pil_image)
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array /= 255.0  # Normalize
+    return img_array
+
+
+def make_gradcam_heatmap(model, img_array, last_conv_layer_name):
+    """Generate Grad-CAM heatmap for explainability."""
+    grad_model = tf.keras.models.Model(
+        [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
+    )
+
+    with tf.GradientTape() as tape:
+        conv_outputs, predictions = grad_model(img_array)
+        top_class = tf.argmax(predictions[0])
+        class_channel = predictions[:, top_class]
+
+    grads = tape.gradient(class_channel, conv_outputs)
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+    conv_outputs = conv_outputs[0]
+
+    heatmap = tf.reduce_mean(tf.multiply(pooled_grads, conv_outputs), axis=-1)
+    heatmap = np.maximum(heatmap, 0)  # ReLU
+    heatmap /= np.max(heatmap)
+
+    return heatmap
+
+
+def overlay_heatmap(image_ndarray, heatmap, alpha=0.4):
+    """Overlay the heatmap on the original image."""
+
+    img = cv2.cvtColor(image_ndarray, cv2.COLOR_BGR2RGB)
+    heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
+
+    heatmap = np.uint8(255 * heatmap)
+    heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+
+    overlayed_img = cv2.addWeighted(img, 1 - alpha, heatmap, alpha, 0)
+
+    return overlayed_img
+
+
+def qpixmap_to_pil(qpixmap):
+    """Convert QPixmap to PIL Image, ensuring it is RGB."""
+    qimage = qpixmap.toImage()
+    width, height = qimage.width(), qimage.height()
+
+    # Convert QImage to format RGB888 (ensures correct 3-channel format)
+    qimage = qimage.convertToFormat(QImage.Format_RGB888)
+
+    # Extract raw bytes
+    buffer = qimage.bits().asstring(width * height * 3)  # RGB -> 3 bytes per pixel
+
+    # Convert to PIL Image
+    pil_image = Image.frombytes("RGB", (width, height), buffer)
+
+    return pil_image
+
+
+
+
+
+def qpixmap_to_numpy(qpixmap):
+    # Convert QPixmap to QImage
+    qimage = qpixmap.toImage()
+
+    # Get QImage dimensions and format
+    width, height = qimage.width(), qimage.height()
+
+    # Convert QImage to byte buffer
+    qimage = qimage.convertToFormat(QImage.Format_RGBA8888)
+    buffer = qimage.bits().asstring(qimage.byteCount())
+
+    # Convert byte buffer to NumPy array
+    arr = np.frombuffer(buffer, dtype=np.uint8).reshape((height, width, 4))  # Shape: (H, W, 4)
+
+    return arr
+
+
+def pil_to_qpixmap(pil_image):
+    pil_image = pil_image.convert("RGBA")  # Ensure the image has an alpha channel
+    data = pil_image.tobytes("raw", "RGBA")
+    qimage = QImage(data, pil_image.width, pil_image.height, QImage.Format_RGBA8888)
+    pixmap = QPixmap.fromImage(qimage)
+    return pixmap.scaled(300, 300, Qt.KeepAspectRatio)
+
+def numpy_to_qpixmap(image_array):
+    """Convert a NumPy ndarray (image) to QPixmap."""
+    if image_array is None:
+        raise ValueError("Invalid image array: None")
+
+    # Ensure the array is in uint8 format
+    if image_array.dtype != np.uint8:
+        image_array = (image_array * 255).astype(np.uint8)  # Normalize if in float format
+
+    height, width, channels = image_array.shape
+
+    # Convert to QImage format based on number of channels
+    if channels == 3:  # RGB
+        qimage = QImage(image_array.data, width, height, width * channels, QImage.Format_RGB888)
+    elif channels == 4:  # RGBA
+        qimage = QImage(image_array.data, width, height, width * channels, QImage.Format_RGBA8888)
+    else:
+        raise ValueError("Unsupported channel number: Image must be RGB or RGBA")
+
+    return QPixmap.fromImage(qimage)
+
+
+def classify_and_explain_pixmap(h5_model, keras_model, pixmap: QPixmap) -> tuple:
+    """Classify image and generate explainability heatmap using Grad-CAM."""
+    # print the paths
+    print("DEBUG ============ PIL IMAGE ============\n", pixmap)
+    print(h5_model)
+    print(keras_model)
+
+    try:
+        model = load_model(h5_model)  # Try loading .h5 model
+    except:
+        model = load_model(keras_model)  # Fallback to .keras model
+
+    # convert pixmap image to PIL.Image.Image
+    pil_image = qpixmap_to_pil(pixmap)
+
+    img_array = preprocess_image(pil_image)
+
+    # Make prediction
+    preds = model.predict(img_array)
+    predicted_class = np.argmax(preds)
+
+    # Generate Grad-CAM heatmap
+    last_conv_layer = "conv2d_5"  # Last convolutional layer in your model
+    heatmap = make_gradcam_heatmap(model, img_array, last_conv_layer)
+
+    image_ndarray = qpixmap_to_numpy(pixmap)
+    print("2. type(img_array):", type(image_ndarray))
+    over_image = overlay_heatmap(image_ndarray, heatmap)
+
+    print(type(over_image))
+
+    # Display results
+    print(f"Predicted class: {predicted_class} (Confidence: {preds[0][predicted_class]:.6f})")
+
+
+
+
+
+    print("DEBUG ============ PIL IMAGE ============\n", pil_image)
+    print(type(pil_image))
+
+    print("DEBUG ============ Overlapped Image ============\n", over_image)
+    print(type(over_image))
+
+    ndarray_to_pixmap = numpy_to_qpixmap(over_image)
+    print("DEBUG ============ QPixmap ============\n", ndarray_to_pixmap)
+    print(type(ndarray_to_pixmap))
+
+    # convert over_image to QPixmap
+    pil_to_pixmap = pil_to_qpixmap(pil_image)
+    print("DEBUG ============ QPixmap ============\n", pil_to_pixmap)
+    print(type(pil_to_pixmap))
+
+    return pil_to_pixmap, predicted_class, preds[0][predicted_class]

@@ -1,0 +1,104 @@
+import os
+
+def get_current_dir_path() -> str:
+    return os.path.dirname(os.path.abspath(__file__))
+
+# ==================================== * * * * * * ===========================================
+# ==================================== * * * * * * ===========================================
+# ==================================== * * * * * * ===========================================
+
+# for btcm_mdl_v01
+def get_h5_MODEL_path__for_btcm_mdl_v01(current_dir_path: str) -> str:
+    return os.path.join(current_dir_path, 'model_v01', 'btcm-mdl-v01.h5')
+
+def get_keras_MODEL_path__for_btcm_mdl_v01(current_dir_path: str) -> str:
+    return os.path.join(current_dir_path, 'model_v01', 'btcm-mdl-v01.keras')
+
+# for btcm_mdl_21m
+def get_h5_MODEL_path__for_btcm_mdl_21m(current_dir_path: str) -> str:
+    return os.path.join(current_dir_path, 'model_21m', 'btcm-mdl-21m.h5')
+
+def get_keras_MODEL_path__for_btcm_mdl_21m(current_dir_path: str) -> str:
+    return os.path.join(current_dir_path, 'model_21m', 'btcm-mdl-21m.keras')
+
+# ==================================== * * * * * * ===========================================
+# ==================================== * * * * * * ===========================================
+# ==================================== * * * * * * ===========================================
+
+# for btcm_mdl_v01
+def GET_MODEL_PATHS__for_btcm_mdl_v01s():
+    current_dir = get_current_dir_path()
+    print("Current: ", current_dir)
+
+    h5_MODEL_path = get_h5_MODEL_path__for_btcm_mdl_v01(current_dir)
+    keras_MODEL_path = get_keras_MODEL_path__for_btcm_mdl_v01(current_dir)
+
+    return h5_MODEL_path, keras_MODEL_path
+
+
+# for btcm_mdl_21m
+def GET_MODEL_PATHS__for_btcm_mdl_21ms():
+    current_dir = get_current_dir_path()
+    print("Current: ", current_dir)
+
+    h5_MODEL_path = get_h5_MODEL_path__for_btcm_mdl_21m(current_dir)
+    keras_MODEL_path = get_keras_MODEL_path__for_btcm_mdl_21m(current_dir)
+
+    return h5_MODEL_path, keras_MODEL_path
+
+
+# ==================================== * * * * * * ===========================================
+# ==================================== * * * * * * ===========================================
+# ==================================== * * * * * * ===========================================
+# for btcm_mdl_v01
+print(GET_MODEL_PATHS__for_btcm_mdl_v01s())
+
+# for btcm_mdl_21m
+print(GET_MODEL_PATHS__for_btcm_mdl_21ms())
+
+# ==================================== * * * * * * ===========================================
+# ==================================== * * * * * * ===========================================
+# ==================================== * * * * * * ===========================================
+
+# for btcm_mdl_v01
+def CLASSIFY__for_btcm_mdl_v01(h5_MODEL_path, keras_MODEL_path, image_path):
+    from Models.ModelFunctionsRepo.model_prep_functions import __CLASSIFY_IMAGE_btcm_mdl_v01
+
+    return __CLASSIFY_IMAGE_btcm_mdl_v01(h5_MODEL_path, keras_MODEL_path, image_path)
+
+
+# for btcm_mdl_21m
+def CLASSIFY__for_btcm_mdl_21m(h5_MODEL_path, keras_MODEL_path, image_path):
+    from Models.ModelFunctionsRepo.model_prep_functions import _CLASSIFY_IMAGE_btcm_mdl_21m
+
+    return _CLASSIFY_IMAGE_btcm_mdl_21m(h5_MODEL_path, keras_MODEL_path, image_path)
+
+
+def CLASSIFY__for_btcm_mdl_v01_using_direct_pixmap(h5_MODEL_path, keras_MODEL_path, pixmap):
+    from Models.ModelFunctionsRepo.model_prep_functions import __CLASSIFY_IMAGE_btcm_mdl_v01_using_direct_pixmap
+
+    return __CLASSIFY_IMAGE_btcm_mdl_v01_using_direct_pixmap(h5_MODEL_path, keras_MODEL_path, pixmap)
+
+def CLASSIFY__for_btcm_mdl_21m_using_direct_pixmap(h5_MODEL_path, keras_MODEL_path, pixmap):
+    from Models.ModelFunctionsRepo.model_prep_functions import __CLASSIFY_IMAGE_btcm_mdl_21m_using_direct_pixmap
+
+    return __CLASSIFY_IMAGE_btcm_mdl_21m_using_direct_pixmap(h5_MODEL_path, keras_MODEL_path, pixmap)
+
+
+# ==================================== * * * * * * ===========================================
+# ==================================== * * * * * * ===========================================
+# ==================================== * * * * * * ===========================================
+
+# for btcm_mdl_v01_xai
+
+def get_xai_model_paths(current_dir_path: str):
+    return os.path.join(current_dir_path, 'model_v01_xai', 'btcm-mdl-v01-xai.h5'), os.path.join(current_dir_path, 'model_v01_xai', 'btcm-mdl-v01-xai.keras')
+
+def GET_XAI_MODEL_PATHS():
+    current_dir = get_current_dir_path()
+    print("Current: ", current_dir)
+
+    h5_MODEL_path, keras_MODEL_path = get_xai_model_paths(current_dir)
+
+    return h5_MODEL_path, keras_MODEL_path
+
